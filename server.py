@@ -2,6 +2,7 @@
 
 from PyQt5 import QtCore, QtNetwork, QtWidgets
 import sys
+import json
 
 
 class server(QtWidgets.QWidget):
@@ -11,7 +12,7 @@ class server(QtWidgets.QWidget):
         """Initialize"""
         super().__init__()
         self.client_list = []
-        self.client_list_names = [" $user$"]
+        self.client_list_names = []
         self.server = QtNetwork.QTcpServer()
         self.timer = QtCore.QTimer()
         self.timer.start(50)
@@ -26,19 +27,21 @@ class server(QtWidgets.QWidget):
         self.server.newConnection.connect(self.new_client)
         self.timer.timeout.connect(self.transfer_data)
 
-    def on_disconnected_client(self, name, index):
+    def on_disconnected_client(self, name):
         """
         Client disconnection
         :param name: Username
-        :param index: Index of client in the list
         :return:
         """
         print("disconnected: " + name)
         self.client_list_names.remove(name)
         print(self.client_list_names)
-        self.client_list.pop(index)
+        for index, i in enumerate(self.client_list):
+            if i[0] == name:
+                self.client_list.pop(index)
+        self.disconnected_message = json.dumps({'type': "userdisconnected", 'value': name})
         for j in self.client_list:
-            j[2].write(bytes("$disconnecteduser$ " + name, 'utf8'))
+            j[2].write(bytes(self.disconnected_message, 'utf8'))
 
     def new_client(self):
         """
@@ -51,7 +54,7 @@ class server(QtWidgets.QWidget):
         self.name = str(self.clientconn.read(4096), 'utf8')
         self.client_list.append((self.name, self.address, self.clientconn))
         self.client_list_names.append(self.name)
-        print(self.client_list)
+        print(self.client_list_names)
         self.client_list_update()
 
     def client_list_update(self):
@@ -59,31 +62,34 @@ class server(QtWidgets.QWidget):
         Adding new client
         :return: None
         """
+        self.new_client_message = json.dumps({'type': 'newuseradded', 'value': self.client_list_names})
         for j in self.client_list:
-            j[2].write(bytes(" ".join(self.client_list_names), "utf8"))
+            j[2].write(bytes(self.new_client_message, "utf8"))
 
     def transfer_data(self):
         """
         Recive data
         :return: None
         """
-        for index, i in enumerate(self.client_list):
-        #try:
+        for i in self.client_list:
+            # try:
             self.mess = str(i[2].read(4096), 'utf8')
             if self.mess:
-                if self.mess.split()[0] == '$disconnected$':
-                    self.on_disconnected_client(i[0], index)
+                self.xmess = json.loads(self.mess)
+                self.xtype = self.xmess['type']
+                if self.xtype == 'user_disconnected':
+                    self.on_disconnected_client(self.xmess['value'])
                     print(self.client_list)
-                elif self.mess != "":
-                    self.mess = self.mess.split()
-                    self.mess_to = self.mess.pop(0)
+                elif self.xtype == 'IMessage':
+                    self.mess_to = self.xmess['value']['to']
                     print("To: " + self.mess_to)
-                    self.mess = i[0] + ": " + " ".join(self.mess)
-                    print(self.mess)
+                    self.mess = json.dumps({'type': 'IMessage', 'value': self.xmess['value']['to'] + ": " + " ".join(
+                        self.xmess['value']['message'])})
+                    print(self.xmess['value']['from'] + ": " + self.xmess['value']['message'])
                     for j in self.client_list:
-                        if j[0] == self.mess_to or j[0] == i[0]:
+                        if j[0] == self.mess_to or j[0] == self.xmess['value']['from']:
                             j[2].write(bytes(self.mess, "utf8"))
-        #except:
+            # except:
             pass
 
 

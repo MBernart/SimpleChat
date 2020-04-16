@@ -1,6 +1,7 @@
 """Chat client"""
 from PyQt5 import QtWidgets, QtNetwork, QtCore
 import sys
+import json
 
 
 class ClientWin(QtWidgets.QWidget):
@@ -40,6 +41,7 @@ class ClientWin(QtWidgets.QWidget):
         self.chat.setReadOnly(True)
         self.type_field = QtWidgets.QTextEdit("Hello input")  # here type message
         self.type_field.lineWrapMode()
+        self.type_field.installEventFilter(self)
 
         self.user_label = QtWidgets.QLabel("Active users:")
         self.users_list = QtWidgets.QListWidget()
@@ -75,6 +77,17 @@ class ClientWin(QtWidgets.QWidget):
         self.sock.readyRead.connect(self.message_recive)
         self.user_logoutbutt.clicked.connect(self.disconnection)
 
+    def eventFilter(self, obj, event):
+        """
+        Send message when Enter is pressed
+        :param obj: object to change typical event
+        :param event: pressed button
+        """
+        if obj is self.type_field and event.type() == QtCore.QEvent.KeyPress:
+            if event.key() in (QtCore.Qt.Key_Enter, QtCore.Qt.Key_Return):
+                self.send_mess()
+        return super().eventFilter(obj, event)
+
     def closeEvent(self, event):
         """
         Disconnect
@@ -108,7 +121,8 @@ class ClientWin(QtWidgets.QWidget):
         :return:
         """
         print("disconnection")
-        self.sock.write(bytes("$disconnected$ " + self.user, 'utf8'))
+        self.disconnection_message = json.dumps({'type': "user_disconnected", 'value': self.user})
+        self.sock.write(bytes(self.disconnection_message, 'utf8'))
         self.sock.waitForBytesWritten(1000)
         self.sock.close()
         self.close()
@@ -125,22 +139,22 @@ class ClientWin(QtWidgets.QWidget):
         Recive message
         :return:
         """
-        self.m = self.sock.read(4096)
-        self.m = str(self.m, 'utf8')
-        self.temp = self.m.split()
-        if self.temp[0] == "$user$":
-            for i in range(1, len(self.temp), 1):
-                if self.temp[i] not in self.user_list and '$user$' not in self.temp[i]:
-                    if self.temp[i] != self.user:
-                        self.users_list.insertItem(1, self.temp[i])
-                        self.user_list.append(self.temp[i])
-        elif self.temp[0] == "$disconnecteduser$":
-            self.remove_client_from_list(self.temp[1])
-            if self.temp[1] == self.mess_to:
+        self.m = str(self.sock.read(4096), 'utf8')
+        self.m = json.loads(self.m)
+        self.xtype = self.m['type']
+        if self.xtype == 'newuseradded':
+            for i in self.m['value']:
+                if i not in self.user_list:
+                    if i != self.user:
+                        self.users_list.insertItem(1, i)
+                        self.user_list.append(i)
+        elif self.xtype == 'userdisconnected':
+            self.remove_client_from_list(self.m['value'])
+            if self.m['value'] == self.mess_to:
                 self.mess_to = ''
-        else:
+        elif self.xtype == 'IMessage':
             self.txt = self.chat.toPlainText()
-            self.txt += "\n" + self.m
+            self.txt += "\n" + self.m['value']
             self.chat.setPlainText(self.txt)
 
     def send_mess(self):
@@ -149,8 +163,10 @@ class ClientWin(QtWidgets.QWidget):
         :return: None
         """
         if self.mess_to:
-            message = self.type_field.toPlainText()
-            self.sock.write(bytes(self.mess_to + " " + message, 'utf8'))
+            self.message = self.type_field.toPlainText()
+            self.message = json.dumps({'type': 'IMessage', 'value': {'from': self.user, 'to': self.mess_to,
+                                                                     'message': self.message}})
+            self.sock.write(bytes(self.message, 'utf8'))
             self.cleartype()
         else:
             self.error_mess.showMessage("Select one recipient.")
