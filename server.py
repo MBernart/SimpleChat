@@ -83,12 +83,13 @@ class server(QtWidgets.QWidget):
                 elif self.xtype == 'IMessage':
                     self.mess_to = self.xmess['value']['to']
                     print("To: " + self.mess_to)
-                    self.mess = json.dumps({'type': 'IMessage', 'value': self.xmess['value']['to'] + ": " + " ".join(
-                        self.xmess['value']['message'])})
-                    print(self.xmess['value']['from'] + ": " + self.xmess['value']['message'])
-                    for j in self.client_list:
-                        if j[0] == self.mess_to or j[0] == self.xmess['value']['from']:
-                            j[2].write(bytes(self.mess, "utf8"))
+                    if self.xmess['value']['from']:
+                        self.mess = json.dumps({'type': 'IMessage', 'value': self.xmess['value']['from'] + ": " + " ".join(
+                            self.xmess['value']['message'])})
+                        print(self.xmess['value']['from'] + ": " + self.xmess['value']['message'])
+                        for j in self.client_list:
+                            if j[0] == self.mess_to or j[0] == self.xmess['value']['from']:
+                                j[2].write(bytes(self.mess, "utf8"))
             # except:
             pass
 
