@@ -19,7 +19,6 @@ class ClientWin(QtWidgets.QWidget):
 
         self.user_list = []
         self.sock = QtNetwork.QTcpSocket()
-        # self.sock.connectToHost(QtNetwork.QHostAddress('X.X.X.X'), 6666)
         self.sock.connectToHost(QtNetwork.QHostAddress.LocalHost, 6666)
         self.sock.write(bytes(self.user, 'utf8'))
         self.error_mess = QtWidgets.QErrorMessage()
@@ -39,7 +38,8 @@ class ClientWin(QtWidgets.QWidget):
         self.to = QtWidgets.QLabel("Conversation with: ")
         self.chat = QtWidgets.QTextEdit()  # show messages
         self.chat.setReadOnly(True)
-        self.type_field = QtWidgets.QTextEdit("Hello input")  # here type message
+        self.type_field = QtWidgets.QTextEdit(
+            "Hello input")  # here type message
         self.type_field.lineWrapMode()
         self.type_field.installEventFilter(self)
 
@@ -121,7 +121,8 @@ class ClientWin(QtWidgets.QWidget):
         :return:
         """
         print("disconnection")
-        self.disconnection_message = json.dumps({'type': "user_disconnected", 'value': self.user})
+        self.disconnection_message = json.dumps(
+            {'type': "user_disconnected", 'value': self.user})
         self.sock.write(bytes(self.disconnection_message, 'utf8'))
         self.sock.waitForBytesWritten(1000)
         self.sock.close()

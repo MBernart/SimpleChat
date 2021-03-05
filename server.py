@@ -39,7 +39,8 @@ class server(QtWidgets.QWidget):
         for index, i in enumerate(self.client_list):
             if i[0] == name:
                 self.client_list.pop(index)
-        self.disconnected_message = json.dumps({'type': "userdisconnected", 'value': name})
+        self.disconnected_message = json.dumps(
+            {'type': "userdisconnected", 'value': name})
         for j in self.client_list:
             j[2].write(bytes(self.disconnected_message, 'utf8'))
 
@@ -62,7 +63,8 @@ class server(QtWidgets.QWidget):
         Adding new client
         :return: None
         """
-        self.new_client_message = json.dumps({'type': 'newuseradded', 'value': self.client_list_names})
+        self.new_client_message = json.dumps(
+            {'type': 'newuseradded', 'value': self.client_list_names})
         for j in self.client_list:
             j[2].write(bytes(self.new_client_message, "utf8"))
 
@@ -86,7 +88,8 @@ class server(QtWidgets.QWidget):
                     if self.xmess['value']['from']:
                         self.mess = json.dumps({'type': 'IMessage', 'value': self.xmess['value']['from'] + ": " + " ".join(
                             self.xmess['value']['message'])})
-                        print(self.xmess['value']['from'] + ": " + self.xmess['value']['message'])
+                        print(self.xmess['value']['from'] +
+                              ": " + self.xmess['value']['message'])
                         for j in self.client_list:
                             if j[0] == self.mess_to or j[0] == self.xmess['value']['from']:
                                 j[2].write(bytes(self.mess, "utf8"))
